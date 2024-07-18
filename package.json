@@ -1,0 +1,28 @@
+{
+  "name": "tampermonkey-scripts",
+  "version": "1.0.0",
+  "description": "Collection of TamperMonkey Scripts for different sites",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riskycase/tampermonkey-scripts.git"
+  },
+  "author": "Hrishikesh Patil <hrishikeshpatil.754@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/riskycase/tampermonkey-scripts/issues"
+  },
+  "homepage": "https://github.com/riskycase/tampermonkey-scripts#readme",
+  "devDependencies": {
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.3"
+  },
+  "lint-staged": {
+    "*": "prettier --ignore-unknown --write"
+  }
+}

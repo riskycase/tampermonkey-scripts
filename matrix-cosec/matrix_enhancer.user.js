@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Matrix Enhancer
 // @namespace    http://10.40.20.41/COSEC/Default/Default
-// @version      2024-07-18
+// @version      2024-07-19
 // @description  Matrix enhancements for the win!
 // @author       Hrishikesh Patil <hrishikeshpatil.754@gmail.com>
 // @run-at       document-end
 // @match        http://10.40.20.41/COSEC/Default/Default
+// @match        http://leaveandattendance.tanla.com/COSEC/Default/Default
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=20.41
 // @updateURL    https://raw.githubusercontent.com/riskycase/tampermonkey-scripts/main/matrix-cosec/matrix_enhancer.user.js
 // @downloadURL  https://raw.githubusercontent.com/riskycase/tampermonkey-scripts/main/matrix-cosec/matrix_enhancer.user.js
@@ -16,6 +17,8 @@
   "use strict";
 
   const token = SecurityManager.token;
+  const url = new URL(window.location.href);
+  const origin = url.origin;
 
   window.addEventListener("hashchange", async (event) => {
     const now = new Date();
@@ -34,9 +37,7 @@
     }
     getDataForMonth(now.getMonth() + 1, now.getFullYear());
     if (
-      event.newURL.startsWith(
-        "http://10.40.20.41/COSEC/Default/Default#/ESS/12/12050/",
-      )
+      event.newURL.startsWith(`${origin}/COSEC/Default/Default#/ESS/12/12050/`)
     ) {
       await waitForElm("#gvDailyAttendancerow1");
       document
@@ -54,7 +55,7 @@
     console.log(`${previousMonth}/${previousYear} - ${month}/${year}`);
     GM_xmlhttpRequest({
       method: "GET",
-      url: "http://10.40.20.41/cosec/api/DailyAttendanceView/getData?MenuId=12050&Type=",
+      url: `${origin}/cosec/api/DailyAttendanceView/getData?MenuId=12050&Type=`,
       headers: {
         Token: token,
       },
@@ -63,7 +64,13 @@
         if (response.response.validation.validate) {
           GM_xmlhttpRequest({
             method: "GET",
-            url: `http://10.40.20.41/cosec/api/DailyAttendanceView/getDataForUserId?IsDatePicker=true&Para1=21%2F${previousMonth.toString().padStart(2, "0")}%2F${previousYear}&Para2=20%2F${month.toString().padStart(2, "0")}%2F${year}&TemplateId=1&UserID=${SecurityManager.username}`,
+            url: `${origin}/cosec/api/DailyAttendanceView/getDataForUserId?IsDatePicker=true&Para1=21%2F${previousMonth
+              .toString()
+              .padStart(2, "0")}%2F${previousYear}&Para2=20%2F${month
+              .toString()
+              .padStart(2, "0")}%2F${year}&TemplateId=1&UserID=${
+              SecurityManager.username
+            }`,
             headers: {
               Token: token,
             },
@@ -72,7 +79,7 @@
               if (response.response.validation.validate) {
                 const AttendanceDetail =
                   response.response.result.AttendanceDetail.filter(
-                    (day) => day.Shift === "GS",
+                    (day) => day.Shift === "GS"
                   ).map((attendance) => ({
                     date: new Date(attendance.Date),
                     start: attendance.FirstIN,
@@ -84,18 +91,22 @@
                   return sum + next.time;
                 }, 0);
                 const workingDays = AttendanceDetail.filter(
-                  (day) => day.time !== 0,
+                  (day) => day.time !== 0
                 ).length;
                 const timeLeft = total - workingDays * 510;
                 let spanContent = "";
                 if (timeLeft >= 0) {
                   const hours = timeLeft / 60;
                   const minutes = timeLeft % 60;
-                  spanContent = `Hours extra: ${Math.floor(hours)}:${minutes.toString().padStart(2, "0")}`;
+                  spanContent = `Hours extra: ${Math.floor(hours)}:${minutes
+                    .toString()
+                    .padStart(2, "0")}`;
                 } else {
                   const hours = Math.abs(timeLeft) / 60;
                   const minutes = Math.abs(timeLeft) % 60;
-                  spanContent = `Hours needed: ${Math.floor(hours)}:${minutes.toString().padStart(2, "0")}`;
+                  spanContent = `Hours needed: ${Math.floor(hours)}:${minutes
+                    .toString()
+                    .padStart(2, "0")}`;
                 }
                 document.getElementById("my_TimeLeft").innerText = spanContent;
               }
@@ -117,7 +128,7 @@
   function getTime() {
     getDataForMonth(
       getMonth(document.querySelector("select#month").value),
-      getYear(document.querySelector("select#TargetYear").value),
+      getYear(document.querySelector("select#TargetYear").value)
     );
   }
 

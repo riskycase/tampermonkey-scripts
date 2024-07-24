@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Matrix Enhancer
 // @namespace    http://10.40.20.41/COSEC/Default/Default
-// @version      2024-07-19
+// @version      2024-07-24
 // @description  Matrix enhancements for the win!
 // @author       Hrishikesh Patil <hrishikeshpatil.754@gmail.com>
 // @run-at       document-end
@@ -11,6 +11,7 @@
 // @updateURL    https://raw.githubusercontent.com/riskycase/tampermonkey-scripts/main/matrix-cosec/matrix_enhancer.user.js
 // @downloadURL  https://raw.githubusercontent.com/riskycase/tampermonkey-scripts/main/matrix-cosec/matrix_enhancer.user.js
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
 // ==/UserScript==
 
 (async function () {
@@ -19,23 +20,35 @@
   const token = SecurityManager.token;
   const url = new URL(window.location.href);
   const origin = url.origin;
+  const now = new Date();
+  const dual = now.getDate() > 20;
+  GM_addStyle(`
+        .timeRemaining {
+            padding: 4px 8px;
+            font-size: smaller;
+        }
+    `);
 
   window.addEventListener("hashchange", async (event) => {
-    const now = new Date();
-    await waitForElm(".form-group > label");
+    await waitForElm("#accordion.EssMenuDivHeight");
     if (!document.getElementById("my_TimeLeft")) {
-      const label = document.createElement("label");
-      label.id = "my_TimeLeft";
-      label.className =
-        "form-label control-label mx-input-theme cursor lblRight label-text";
-      document
-        .querySelector(".form-group > label")
-        .parentNode.appendChild(document.createElement("br"));
-      document
-        .querySelector(".form-group > label")
-        .parentNode.appendChild(label);
+      const li = document.createElement("li");
+      li.id = "my_TimeLeft";
+      li.className = "timeRemaining";
+      document.querySelector("#accordion.EssMenuDivHeight").appendChild(li);
     }
-    getDataForMonth(now.getMonth() + 1, now.getFullYear());
+    if (dual && !document.getElementById("my_TimeLeft2")) {
+      const li = document.createElement("li");
+      li.id = "my_TimeLeft2";
+      li.className = "timeRemaining";
+      document.querySelector("#accordion.EssMenuDivHeight").appendChild(li);
+      const nextMonth = (now.getMonth() + 1) % 12;
+      const nextYear = now.getFullYear() + (nextMonth === 0 ? 1 : 0);
+      setTimeout(() => {
+        getDataForMonth(nextMonth + 1, nextYear, "my_TimeLeft2");
+      }, 500);
+    }
+    getDataForMonth(now.getMonth() + 1, now.getFullYear(), "my_TimeLeft");
     if (
       event.newURL.startsWith(`${origin}/COSEC/Default/Default#/ESS/12/12050/`)
     ) {
@@ -49,7 +62,7 @@
     }
   });
 
-  function getDataForMonth(month, year) {
+  function getDataForMonth(month, year, id) {
     const previousMonth = ((month + 10) % 12) + 1;
     const previousYear = month === 1 ? year - 1 : year;
     console.log(`${previousMonth}/${previousYear} - ${month}/${year}`);
@@ -79,7 +92,7 @@
               if (response.response.validation.validate) {
                 const AttendanceDetail =
                   response.response.result.AttendanceDetail.filter(
-                    (day) => day.Shift === "GS"
+                    (day) => day.Shift === "GS",
                   ).map((attendance) => ({
                     date: new Date(attendance.Date),
                     start: attendance.FirstIN,
@@ -91,24 +104,24 @@
                   return sum + next.time;
                 }, 0);
                 const workingDays = AttendanceDetail.filter(
-                  (day) => day.time !== 0
+                  (day) => day.time !== 0,
                 ).length;
                 const timeLeft = total - workingDays * 510;
                 let spanContent = "";
                 if (timeLeft >= 0) {
                   const hours = timeLeft / 60;
                   const minutes = timeLeft % 60;
-                  spanContent = `Hours extra: ${Math.floor(hours)}:${minutes
+                  spanContent = `${getMonthName(previousMonth)} extra: ${Math.floor(hours)}:${minutes
                     .toString()
                     .padStart(2, "0")}`;
                 } else {
                   const hours = Math.abs(timeLeft) / 60;
                   const minutes = Math.abs(timeLeft) % 60;
-                  spanContent = `Hours needed: ${Math.floor(hours)}:${minutes
+                  spanContent = `${getMonthName(previousMonth)} needed: ${Math.floor(hours)}:${minutes
                     .toString()
                     .padStart(2, "0")}`;
                 }
-                document.getElementById("my_TimeLeft").innerText = spanContent;
+                document.getElementById(id).innerText = spanContent;
               }
             },
           });
@@ -128,8 +141,38 @@
   function getTime() {
     getDataForMonth(
       getMonth(document.querySelector("select#month").value),
-      getYear(document.querySelector("select#TargetYear").value)
+      getYear(document.querySelector("select#TargetYear").value),
+      "my_TimeLeft",
     );
+  }
+
+  function getMonthName(month) {
+    switch (month) {
+      case 0:
+        return "Jan";
+      case 1:
+        return "Feb";
+      case 2:
+        return "Mar";
+      case 3:
+        return "Apr";
+      case 4:
+        return "May";
+      case 5:
+        return "Jun";
+      case 6:
+        return "Jul";
+      case 7:
+        return "Aug";
+      case 8:
+        return "Sep";
+      case 9:
+        return "Oct";
+      case 10:
+        return "Nov";
+      case 11:
+        return "Dec";
+    }
   }
 
   function waitForElm(selector) {

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Matrix Enhancer
 // @namespace    http://10.40.20.41/COSEC/Default/Default
-// @version      2024-07-24
+// @version      2024-07-29
 // @description  Matrix enhancements for the win!
 // @author       Hrishikesh Patil <hrishikeshpatil.754@gmail.com>
 // @run-at       document-end
@@ -92,7 +92,10 @@
               if (response.response.validation.validate) {
                 const AttendanceDetail =
                   response.response.result.AttendanceDetail.filter(
-                    (day) => day.Shift === "GS",
+                    (day) =>
+                      day.Shift === "GS" &&
+                      day.FirstHalf !== "EL" &&
+                      day.SecondHalf !== "EL",
                   ).map((attendance) => ({
                     date: new Date(attendance.Date),
                     start: attendance.FirstIN,

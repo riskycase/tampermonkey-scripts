@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Matrix Enhancer
 // @namespace    http://10.40.20.41/COSEC/Default/Default
-// @version      2024-07-29
+// @version      2024-09-19
 // @description  Matrix enhancements for the win!
 // @author       Hrishikesh Patil <hrishikeshpatil.754@gmail.com>
 // @run-at       document-end
@@ -12,20 +12,38 @@
 // @downloadURL  https://raw.githubusercontent.com/riskycase/tampermonkey-scripts/main/matrix-cosec/matrix_enhancer.user.js
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addStyle
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @require      http://userscripts-mirror.org/scripts/source/107941.user.js
 // ==/UserScript==
 
 (async function () {
   "use strict";
+
+  const IGNORE_DATES_KEY = "ignoreDates";
+  const ROW_UPGRADED_ATTRIBUTE = "rowUpgraded";
+  const LABEL_UPGRADED_ATTRIBUTE = "labelUpgraded";
 
   const token = SecurityManager.token;
   const url = new URL(window.location.href);
   const origin = url.origin;
   const now = new Date();
   const dual = now.getDate() > 20;
+  const ignoreDates = new Set(
+    String(GM_SuperValue.get(IGNORE_DATES_KEY, "17/09/2024")).split(","),
+  );
   GM_addStyle(`
         .timeRemaining {
             padding: 4px 8px;
             font-size: smaller;
+        }
+
+        .upgraded-label-true:after {
+          content: " ✔️"
+        }
+
+        .upgraded-label-false:after {
+          content: " ❌"
         }
     `);
 
@@ -65,7 +83,6 @@
   function getDataForMonth(month, year, id) {
     const previousMonth = ((month + 10) % 12) + 1;
     const previousYear = month === 1 ? year - 1 : year;
-    console.log(`${previousMonth}/${previousYear} - ${month}/${year}`);
     GM_xmlhttpRequest({
       method: "GET",
       url: `${origin}/cosec/api/DailyAttendanceView/getData?MenuId=12050&Type=`,
@@ -95,13 +112,15 @@
                     (day) =>
                       day.Shift === "GS" &&
                       day.FirstHalf !== "EL" &&
-                      day.SecondHalf !== "EL",
+                      day.SecondHalf !== "EL" &&
+                      !ignoreDates.has(day.DateStr),
                   ).map((attendance) => ({
                     date: new Date(attendance.Date),
                     start: attendance.FirstIN,
                     end: attendance.LastOUT,
                     time: Number(attendance.WorkTime),
                     hours: attendance.WorkHours,
+                    dateStr: attendance.DateStr,
                   }));
                 const total = AttendanceDetail.reduce((sum, next) => {
                   return sum + next.time;
@@ -130,6 +149,64 @@
           });
         }
       },
+    });
+    if (
+      window.location.href.startsWith(
+        `${origin}/COSEC/Default/Default#/ESS/12/12050/`,
+      )
+    ) {
+      setTimeout(async () => {
+        await waitForElm("#grid1.addScrolling");
+        markIgnored();
+        const observer = new MutationObserver((mutations) => {
+          markIgnored();
+          observer.disconnect();
+        });
+        observer.observe(document.querySelector("#grid1.addScrolling"), {
+          childList: true,
+          subtree: true,
+        });
+      }, 0);
+    }
+  }
+
+  function markIgnored() {
+    const rows = Array(
+      ...document
+        .querySelector("tbody.GridBody")
+        .querySelectorAll("tr:not(.ng-hide)"),
+    ).map((e) => ({
+      element: e,
+      label: e.querySelector("label"),
+      date: e.querySelector("label").innerText,
+    }));
+    rows.forEach((row) => {
+      if (row.element.getAttribute(ROW_UPGRADED_ATTRIBUTE) !== "true") {
+        row.element.addEventListener("click", () => {
+          if (ignoreDates.has(row.date)) {
+            ignoreDates.delete(row.date);
+            row.label.classList.remove("upgraded-label-false");
+            row.label.classList.add("upgraded-label-true");
+          } else {
+            ignoreDates.add(row.date);
+            row.label.classList.remove("upgraded-label-true");
+            row.label.classList.add("upgraded-label-false");
+          }
+          GM_SuperValue.set(IGNORE_DATES_KEY, Array(ignoreDates).join(","));
+          getTime();
+        });
+      }
+      row.element.setAttribute(ROW_UPGRADED_ATTRIBUTE, "true");
+      if (row.label.getAttribute(LABEL_UPGRADED_ATTRIBUTE) !== "true") {
+        if (ignoreDates.has(row.date)) {
+          row.label.classList.remove("upgraded-label-true");
+          row.label.classList.add("upgraded-label-false");
+        } else {
+          row.label.classList.remove("upgraded-label-false");
+          row.label.classList.add("upgraded-label-true");
+        }
+      }
+      row.label.setAttribute(LABEL_UPGRADED_ATTRIBUTE, "true");
     });
   }
 

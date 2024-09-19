@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         JIRA Improvements - Tanla edition
 // @namespace    https://tanlaplatforms.atlassian.net/
-// @version      2024-07-23
+// @version      2024-09-19
 // @description  Make JIRA better
 // @author       Hrishikesh Patil <hrishikeshpatil.754@gmail.com>
 // @match        https://tanlaplatforms.atlassian.net/*
@@ -9,10 +9,15 @@
 // @downloadURL  https://raw.githubusercontent.com/riskycase/tampermonkey-scripts/main/matrix-cosec/jira_enhancer.user.js
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        GM_addStyle
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @require      http://userscripts-mirror.org/scripts/source/107941.user.js
 // ==/UserScript==
 
 (async function () {
   "use strict";
+
+  const HIDE_RIGHT_PANEL_KEY = "hideRightPanel";
 
   function waitForElm(selector) {
     return new Promise((resolve) => {
@@ -37,7 +42,8 @@
 
   let styleElement = GM_addStyle("");
 
-  let rightPanel = true;
+  let rightPanel = GM_SuperValue.get(HIDE_RIGHT_PANEL_KEY, false);
+  console.log(HIDE_RIGHT_PANEL_KEY + ": " + rightPanel);
 
   function updateStyle() {
     styleElement.remove();
@@ -56,11 +62,15 @@
     `);
   }
 
-  updateStyle();
-
   await waitForElm(
     '[data-component-selector="jira-issue-view-common-component-resize-handle"]',
   );
+
+  await waitForElm(
+    '[data-testid="issue.views.issue-details.issue-layout.container-right"]',
+  );
+
+  updateStyle();
 
   document
     .querySelector(
@@ -68,6 +78,7 @@
     )
     .addEventListener("click", (_) => {
       rightPanel = !rightPanel;
+      GM_SuperValue.set(HIDE_RIGHT_PANEL_KEY, rightPanel);
       updateStyle();
     });
 })();
